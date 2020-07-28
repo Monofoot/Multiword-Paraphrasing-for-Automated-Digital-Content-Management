@@ -1,7 +1,10 @@
 import pandas as pd
 import random as rand
 import networkx as nx # Graph library
-from ast import literal_eval # Interprets stirngs as Python objects.
+import matplotlib as mpl
+import matplotlib.pyplot as plt
+from ast import literal_eval # Interprets strings as Python objects.
+
 df = pd.read_csv('mscarticles.csv')
 
 # Print a title.
@@ -70,15 +73,33 @@ print("The pobj is: ", sentence_pobj)
 """
 
 # Check frequent patterns between subject and direct object.
-edges = []
+raw_edges = []
 
 for token in random_title:
-    edges.append((token[4], token[1])) # Store relationships between edges.
+    raw_edges.append((token[4], token[1])) # Store relationships between edges.
 
-graph_title = nx.DiGraph(edges)
+graph_title = nx.DiGraph(raw_edges)
 
-print(graph_title.edges)
-print(graph_title.nodes)
+# This might be really inefficient but it's 1am and I'm falling asleep
+labels = {}
+for node in graph_title.nodes:
+    for token in random_title:
+        if token[1] == node:
+            labels[node] =  str(node) + str(" ") + token[0]
+
+print("Nodes: ", graph_title.edges)
+print("Edges: ", graph_title.nodes)
+print("Number of edges: ", graph_title.number_of_edges())
+print("Number of nodes: ", graph_title.number_of_nodes())
+
+pos = nx.planar_layout(graph_title)
+
+nx.draw_networkx_labels(graph_title, pos, labels)
+nodes = nx.draw_networkx_nodes(graph_title, pos)
+edges = nx.draw_networkx_edges(graph_title, pos)
+
+plt.show()
+
 
 title_subjects = []
 for token in random_title:
