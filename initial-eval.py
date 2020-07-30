@@ -1,5 +1,6 @@
 import pandas as pd
 import random as rand
+import string
 import networkx as nx # Graph library
 import matplotlib as mpl
 import matplotlib.pyplot as plt
@@ -7,10 +8,11 @@ from ast import literal_eval # Interprets strings as Python objects.
 
 df = pd.read_csv('mscarticles.csv')
 
-# Print a title.
+# Grab a random title.
 random_title = df.parsed_title.iloc[rand.randrange(0, 9999)]
 '''
 Each title is stored as:
+[ WORD, INDEX, PART OF SPEECH, LABEL OF EDGE BETWEEN THIS NODE AND PARENT, INDEX OF PARENT NODE, PARENT ] 
 [["What",0,"PRON","dobj",2,"What "],
 ["coronavirus",1,"PROPN","nsubj",2,"coronavirus "],
 ["means",2,"VERB","ROOT",2,"means "],
@@ -22,8 +24,6 @@ Each title is stored as:
 ["Which",8,"DET","ROOT",8,"Which"],
 ["?",9,"PUNCT","punct",8,"? "],
 ["News",10,"NOUN","ROOT",10,"News"]]
-
-[ WORD, INDEX, PART OF SPEECH, LABEL OF EDGE BETWEEN THIS NODE AND PARENT, INDEX OF PARENT NODE, PARENT ] 
 '''
 
 # By using the ast library we can represent the title as a list of lists.
@@ -35,43 +35,6 @@ for token in random_title:
 eligible_title = " ".join(str(word) for word in title_word)
 print(eligible_title)
 
-
-
-# Store all of the sentence types in one array - not sure how useful this will be, but let's try it
-"""
-sentence_root = []
-sentence_dobj = []
-sentence_pobj = []
-sentence_nsubj = []
-sentence_conj = []
-sentence_prep = []
-sentence_punct = []
-sentence_cc = []
-
-for token in random_title:
-    print("Testing: ", token[3])
-    if token[3] == "ROOT":
-        sentence_root.append(token)
-    if token[3] == "dobj":
-        sentence_dobj.append(token)
-    if token[3] == "pobj":
-        sentence_pobj.append(token)
-    if token[3] == "nsubj":
-        sentence_nsubj.append(token)
-    if token[3] == "conj":
-        sentence_conj.append(token)
-    if token[3] == "prep":
-        sentence_prep.append(token)
-    if token[3] == "punct":
-        sentence_punct.append(token)
-    if token[3] == "cc":
-        sentence_cc.append(token)
-
-print("The root is: ", sentence_root)
-print("The dobj is: ", sentence_dobj)
-print("The pobj is: ", sentence_pobj)
-"""
-
 # Check frequent patterns between subject and direct object.
 raw_edges = []
 
@@ -80,17 +43,32 @@ for token in random_title:
 
 graph_title = nx.DiGraph(raw_edges)
 
+nsubj_nodes = []
+dobj_nodes = []
+
 # This might be really inefficient but it's 1am and I'm falling asleep
 labels = {}
 for node in graph_title.nodes:
     for token in random_title:
         if token[1] == node:
-            labels[node] =  str(node) + str(" ") + token[0]
+            labels[node] =  str(node) + " " + token[3] + " " + token[0]
+            # Also check for nsubj and dobj here.
+            if token[3] == "nsubj":
+                nsubj_nodes.append(node)
+            if token[3] == "dobj":
+                dobj_nodes.append(node)
+
 
 print("Nodes: ", graph_title.edges)
 print("Edges: ", graph_title.nodes)
-print("Number of edges: ", graph_title.number_of_edges())
-print("Number of nodes: ", graph_title.number_of_nodes())
+
+print("The nsubj node(s): ", nsubj_nodes)
+print("The dobj node(s): ", dobj_nodes)
+print("Testing all pairs shortest path: " )
+nx.all_pairs_shortest_path_length(graph_title)
+if len(nsubj_nodes) == len(dobj_nodes) and len(nsubj_nodes) > 0:
+    print("Printing the nodes as they are the same length: ", nsubj_nodes, dobj_nodes)
+    print("The shortest path between each nsubj and dobj: ", nx.shortest_path(graph_title, nsubj_nodes[0], dobj_nodes[0])) # Work from here, can't find a path
 
 pos = nx.planar_layout(graph_title)
 
@@ -100,14 +78,7 @@ edges = nx.draw_networkx_edges(graph_title, pos)
 
 plt.show()
 
-
-title_subjects = []
-for token in random_title:
-    if token[3] == "nsubj":
-        title_subjects.append(token)
-
-print("The subjects: ", title_subjects)
-
+# Find patterns now, between nsubj and dobj.
 
 # Find node whose label is a subject and then find nx.shortest_path
 # So you're simply finding the shortest path from the parent to the child
