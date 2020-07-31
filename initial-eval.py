@@ -2,6 +2,7 @@ import pandas as pd
 import random as rand
 import string
 import networkx as nx # Graph library
+import spacy,en_core_web_sm
 import matplotlib as mpl
 import matplotlib.pyplot as plt
 from ast import literal_eval # Interprets strings as Python objects.
@@ -58,25 +59,41 @@ for node in graph_title.nodes:
             if token[3] == "dobj":
                 dobj_nodes.append(node)
 
-
 print("Nodes: ", graph_title.edges)
 print("Edges: ", graph_title.nodes)
 
-print("The nsubj node(s): ", nsubj_nodes)
-print("The dobj node(s): ", dobj_nodes)
-print("Testing all pairs shortest path: " )
-nx.all_pairs_shortest_path_length(graph_title)
-if len(nsubj_nodes) == len(dobj_nodes) and len(nsubj_nodes) > 0:
-    print("Printing the nodes as they are the same length: ", nsubj_nodes, dobj_nodes)
-    print("The shortest path between each nsubj and dobj: ", nx.shortest_path(graph_title, nsubj_nodes[0], dobj_nodes[0])) # Work from here, can't find a path
 
-pos = nx.planar_layout(graph_title)
+############
+# subject object shortest paths
+############
+#print("The nsubj node(s): ", nsubj_nodes)
+#print("The dobj node(s): ", dobj_nodes)
+#nx.all_pairs_shortest_path_length(graph_title)
+#if len(nsubj_nodes) == len(dobj_nodes) and len(nsubj_nodes) > 0:
+#    print("Printing the nodes as they are the same length: ", nsubj_nodes, dobj_nodes)
+#    print("The shortest path between each nsubj and dobj: ", nx.shortest_path(graph_title, nsubj_nodes[0], dobj_nodes[0])) # Work from here, can't find a path
 
-nx.draw_networkx_labels(graph_title, pos, labels)
-nodes = nx.draw_networkx_nodes(graph_title, pos)
-edges = nx.draw_networkx_edges(graph_title, pos)
 
-plt.show()
+################
+# SVO
+################
+# Checking for SVO, SVVO or SVOO.
+SUBJECTS = ["nsubj", "nsubjpass", "csubj", "csubjpass", "agent", "expl"]
+OBJECTS = ["dobj", "dative", "attr", "oprd"]
+
+list_of_subjects = []
+list_of_objects = []
+list_of_verbs = []
+
+for token in random_title:
+    if token[3] in SUBJECTS:
+        list_of_subjects.append(token)
+    if token[3] in OBJECTS:
+        list_of_objects.append(token)
+    if token[2] == "VERB":
+        list_of_verbs.append(token)
+
+print("SVO found: ", list_of_subjects[0], list_of_verbs[0], list_of_objects[0])
 
 # Find patterns now, between nsubj and dobj.
 
@@ -90,3 +107,11 @@ plt.show()
 # FIND THE SVO PATTERNS "SUBJECT, VERB, OBJECT"
 # num of SVO patterns / len(df), the higher the more linguistically standard the newspaper headlines are
 # use nx, don't do it all by hand, research nx - shortest path
+
+pos = nx.planar_layout(graph_title)
+
+nx.draw_networkx_labels(graph_title, pos, labels)
+nodes = nx.draw_networkx_nodes(graph_title, pos)
+edges = nx.draw_networkx_edges(graph_title, pos)
+
+#plt.show()
