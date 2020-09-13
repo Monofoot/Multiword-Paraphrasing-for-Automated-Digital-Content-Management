@@ -7,6 +7,8 @@ import matplotlib as mpl
 import matplotlib.pyplot as plt
 from ast import literal_eval # Interprets strings as Python objects.
 
+print("\n")
+
 df = pd.read_csv('mscarticles.csv')
 
 # Grab a random title.
@@ -85,33 +87,61 @@ list_of_subjects = []
 list_of_objects = []
 list_of_verbs = []
 
-for token in random_title:
+'''for token in random_title:
     if token[3] in SUBJECTS:
         list_of_subjects.append(token)
     if token[3] in OBJECTS:
         list_of_objects.append(token)
     if token[2] == "VERB":
         list_of_verbs.append(token)
+'''
 
-print("SVO found: ", list_of_subjects[0], list_of_verbs[0], list_of_objects[0])
+total_svo_count = 0
 
-# Find patterns now, between nsubj and dobj.
+for index, row in df.iterrows():
+    indexed_title = df.parsed_title.iloc[index]
+    indexed_title = literal_eval(indexed_title)
+    
+    subjects = []
+    objects = []
+    verbs = []
 
+    for token in indexed_title:
+        if token[3] in SUBJECTS:
+            subjects.append(token)
+        if token[3] in OBJECTS:
+            objects.append(token)
+        if token[2] == "VERB":
+            verbs.append(token)
+    
+    if len(subjects) > 0 and len(objects) > 0 and len(verbs) > 0:
+        total_svo_count += 1
+
+print("The total SVO count is: ", total_svo_count)
+average_svo = total_svo_count/len(df)
+print("Average SVO score: ", average_svo, "%")
+
+
+
+"""try:
+    print("SVO found: ", list_of_subjects[0], list_of_verbs[0], list_of_objects[0])
+except:
+    print("No SVO pattern found.")
+"""
 # Find node whose label is a subject and then find nx.shortest_path
 # So you're simply finding the shortest path from the parent to the child
 # "A court has lifted the restriction on Mary Trump's tell-all book" becomes:
 # "A court lifted the restriction on Mary Trump's tell-all book"
 
 # So if you get a pattern of like (0, 1) (1, 0) etc, then see how many times you get that pattern
-
-# FIND THE SVO PATTERNS "SUBJECT, VERB, OBJECT"
-# num of SVO patterns / len(df), the higher the more linguistically standard the newspaper headlines are
 # use nx, don't do it all by hand, research nx - shortest path
 
-pos = nx.planar_layout(graph_title)
+"""pos = nx.planar_layout(graph_title)
 
 nx.draw_networkx_labels(graph_title, pos, labels)
 nodes = nx.draw_networkx_nodes(graph_title, pos)
 edges = nx.draw_networkx_edges(graph_title, pos)
 
-#plt.show()
+plt.show()
+"""
+print("\n")
