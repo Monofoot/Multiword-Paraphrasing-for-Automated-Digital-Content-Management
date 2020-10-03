@@ -1,11 +1,20 @@
-import pandas as pd
+#!/usr/bin/python
+
 import random as rand
 import string
-import networkx as nx # Graph library
-import spacy,en_core_web_sm
+from ast import literal_eval
+import os
+
+import en_core_web_sm
 import matplotlib as mpl
+if os.environ.get('DISPLAY','') == '':
+    print('No display for matplotlib found.')
 import matplotlib.pyplot as plt
-from ast import literal_eval # Interprets strings as Python objects.
+import networkx as nx
+import nltk
+import pandas as pd
+import spacy
+from nltk.tag import map_tag, pos_tag
 
 '''
 Each title is stored as:
@@ -17,7 +26,7 @@ Each title is stored as:
 ["pensions",4,"NOUN","pobj",3,"pensions "],
 ["and",5,"CCONJ","cc",4,"and "],
 ["investments",6,"NOUN","conj",4,"investments "],
-["–",7,"PUNCT","punct",2,"– "],
+["-",7,"PUNCT","punct",2,"- "],
 ["Which",8,"DET","ROOT",8,"Which"],
 ["?",9,"PUNCT","punct",8,"? "],
 ["News",10,"NOUN","ROOT",10,"News"]]
@@ -25,31 +34,73 @@ Each title is stored as:
 
 class Dataset:
 
-    corpus = None
-    random_title = None
-
     def __init__(self):
+        """
+        Constructor for Dataset.
+
+        Does several things:
+        Reads from the csv file and stores it as corpus.
+        Select a random title for analysis.
+        Convert the title from a long string to readable object.
+        """
         self.corpus = pd.read_csv('mscarticles.csv')
         self.random_title = self.corpus.parsed_title.iloc[rand.randrange(0, 9999)]
+        
+        self.random_title = self.convert_from_string_to_objects(self.random_title)
 
     def get_dataset(self):
+        """
+        Return the dataset.
+        """
+
         return self.corpus
     
     def get_title_count(self):
+        """
+        Return the length of the dataset.
+        """
+
         return len(self.corpus)
 
+    def convert_from_string_to_objects(self, data):
+        """
+        Convert from string to Python objects.
+
+        Because the data in the corpus is a long string
+        which needs to be represented as objects, ast's 
+        literal_eval is used to convert it.
+        """
+        
+        return literal_eval(data)
+        
+        
     
     def get_tokenized_random_title(self):
+        """
+        Return the random title in token form.
+        """
+
         return self.random_title
     
     def get_literal_random_title(self):
-        title_word = []
-        for token in literal_eval(self.random_title):
-            title_word.append(token[0])
-        literal_title = " ".join(str(word) for word in title_word)
+        """
+        Return the random title in literal form.
+        """
+
+        title = []
+        for token in self.random_title:
+            title.append(token[0])
+        literal_title = " ".join(str(word) for word in title)
         return literal_title
     
+    # Clean up the data, use regex https://medium.com/biaslyai/beginners-guide-to-text-preprocessing-in-python-2cbeafbf5f44
+    #def preprocess(self):
+    
+
+    # REWORK THIS V
     def total_subject_verb_object(self):
+        """
+        """
         SUBJECTS = ["nsubj", "nsubjpass", "csubj", "csubjpass", "agent", "expl"]
         OBJECTS = ["dobj", "dative", "attr", "oprd"]
 
@@ -57,7 +108,7 @@ class Dataset:
 
         for index, row in self.corpus.iterrows():
             indexed_title = self.corpus.parsed_title.iloc[index]
-            indexed_title = literal_eval(indexed_title)
+            indexed_title = self.convert_from_string_to_objects(indexed_title)
             
             subjects = []
             objects = []
@@ -76,13 +127,22 @@ class Dataset:
         return total_svo_count
 
     def draw_syntactic_parse_tree(self):
+        """
+        One line doc string.
+        """
+
+        entities = []
+        for token in self.random_title:
+            entities.append((token[0], token[2]))
+        draw_entities = nltk.chunk.ne_chunk(entities)
+        # Need to sort the tokens so that it looks like this:
+        #[('word', 'NOUN'), ('nextword', 'PRON')]
+
+        # To draw the tree:
+        draw_entities.draw()
         
 
-
-
 """
-
-
 # Check frequent patterns between subject and direct object.
 raw_edges = []
 
@@ -176,35 +236,10 @@ nlp = spacy.load('en_core_web_sm')
 doc = nlp(eligible_title)
 displacy.render(doc, style="dep", jupyter=True)
 
-import nltk
-from nltk.tag import pos_tag, map_tag
+
 
 print("Before stripping it down, the title was: {}".format(random_title))
-# Positional tagging
-####################
-# For each word in the sentence,
-# if POS = PROPN, POS = NNP
-# Might need a fancy regex for this to make it wildly simpler
 
-print("Testing untokenized: {}".format(eligible_title))
-tokens = nltk.word_tokenize(eligible_title)
-print("Tokenized: {}".format(tokens))
-
-testag = ()
-for token in random_title:
-    print("Word: ", token[0], "pos: ", token[2])
-    testag.append(token[0], token[3])
-print("Testing testtag: ", testag) #JUST FIX THIS IT SUCKS
-
-tagged = nltk.pos_tag(tokens)
-tagged = [(word, map_tag('en-ptb', 'universal', tag)) for word, tag in tagged]
-print("Tagged: {}".format(tagged))
-
-entities = nltk.chunk.ne_chunk(tagged)
-print("Entities: {}".format(entities))
-
-# To draw the tree:
-entities.draw()
 """
 
 if __name__ == "__main__":
@@ -213,3 +248,4 @@ if __name__ == "__main__":
     literal_random_title = Articles.get_literal_random_title()
     total_subject_verb_object = Articles.total_subject_verb_object()
     average_svo_score = round(Articles.total_subject_verb_object()/Articles.get_title_count(), 2)
+    Articles.draw_syntactic_parse_tree()
