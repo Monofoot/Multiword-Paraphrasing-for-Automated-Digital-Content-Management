@@ -34,9 +34,6 @@ Each title is stored as:
 ["News",10,"NOUN","ROOT",10,"News"]]
 '''
 
-# to-do:
-# find most frequent svo/svvo/svoo's
-
 class Dataset:
 
     def __init__(self):
@@ -50,14 +47,16 @@ class Dataset:
         Preprocess the dataset after converting,
         so that we can remove the entire object we don't want.
         """
-        pd.set_option('display.max_colwidth', None)
         self.corpus = pd.read_csv('mscarticles.csv')
+        print("Selecting a random title.")
         self.random_title = self.corpus.parsed_title.iloc[rand.randrange(0, 9999)]
         
+        print("Converting the random title from string to object.")
         self.random_title = self.convert_from_string_to_objects(self.random_title)
+        print("Preprocessing the title.")
         self.random_title = self.preprocess(self.random_title)
 
-
+        print("Doing the rest of it now")
         for index, row in self.corpus.iterrows():
             self.corpus.parsed_title.iloc[index] = self.convert_from_string_to_objects(self.corpus.parsed_title.iloc[index])
             self.corpus.parsed_title.iloc[index] = self.preprocess(self.corpus.parsed_title.iloc[index])
@@ -133,11 +132,11 @@ class Dataset:
     # make a new list like string[] or something and store the entries there
     #def convert_to_string(self)
 
-    def total_subject_verb_object(self):
+    def extract_subject_verb_object(self):
         """
-        Trying to re-write the svo extraction/mention the lib u use
+        Extract subject verb object relationships.
         """
-        total_svo_count = 0
+        
         nlp = en_core_web_sm.load()
         for index, row in self.corpus.iterrows():
             indexed_title = self.corpus.parsed_title.iloc[index]
@@ -156,6 +155,23 @@ class Dataset:
             if findSVOs(parse):
                 total_svo_count += 1
         return total_svo_count
+
+    def total_subject_verb_object(self, list_of_svo):
+        """
+        Return the total number of subject verb object relationships.
+        """
+        total_svo_count = 0
+                    if type(title) is str:
+                parse = nlp(title)
+            elif type(title) is list:
+                None # Just... do nothing...
+            if findSVOs(parse):
+                total_svo_count += 1
+
+    def most_frequent_subject_verb_object(self):
+        """
+        Find the most frequent subject verb object relationships.
+        """
 
     def draw_syntactic_parse_tree(self):
         """
@@ -277,8 +293,8 @@ if __name__ == "__main__":
     Articles = Dataset()
     #tokenized_random_title = Articles.get_tokenized_random_title()
     #literal_random_title = Articles.get_literal_random_title()
-    total_subject_verb_object = Articles.total_subject_verb_object()
-    average_svo_score = round(Articles.total_subject_verb_object()/Articles.get_title_count(), 2)
+    #total_subject_verb_object = Articles.total_subject_verb_object()
+    #average_svo_score = round(Articles.total_subject_verb_object()/Articles.get_title_count(), 2)
     #Articles.draw_syntactic_parse_tree()
-    print("Average: ", average_svo_score)
+    #print("Average: ", average_svo_score)
 
