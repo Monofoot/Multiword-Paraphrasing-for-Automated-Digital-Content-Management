@@ -14,7 +14,9 @@ import networkx as nx
 import nltk
 import pandas as pd
 import spacy
+from spacy.lang.en import English
 from nltk.tag import map_tag, pos_tag
+from subject_object_extraction import findSVOs
 
 '''
 Each title is stored as:
@@ -32,6 +34,9 @@ Each title is stored as:
 ["News",10,"NOUN","ROOT",10,"News"]]
 '''
 
+# to-do:
+# find most frequent svo/svvo/svoo's
+
 class Dataset:
 
     def __init__(self):
@@ -42,11 +47,20 @@ class Dataset:
         Reads from the csv file and stores it as corpus.
         Select a random title for analysis.
         Convert the title from a long string to readable object.
+        Preprocess the dataset after converting,
+        so that we can remove the entire object we don't want.
         """
+        pd.set_option('display.max_colwidth', None)
         self.corpus = pd.read_csv('mscarticles.csv')
         self.random_title = self.corpus.parsed_title.iloc[rand.randrange(0, 9999)]
         
         self.random_title = self.convert_from_string_to_objects(self.random_title)
+        self.random_title = self.preprocess(self.random_title)
+
+
+        for index, row in self.corpus.iterrows():
+            self.corpus.parsed_title.iloc[index] = self.convert_from_string_to_objects(self.corpus.parsed_title.iloc[index])
+            self.corpus.parsed_title.iloc[index] = self.preprocess(self.corpus.parsed_title.iloc[index])
 
     def get_dataset(self):
         """
@@ -68,7 +82,8 @@ class Dataset:
 
         Because the data in the corpus is a long string
         which needs to be represented as objects, ast's 
-        literal_eval is used to convert it.
+        literal_eval is used to convert it. This also
+        essentially acts as our tokenizer.
         """
         
         return literal_eval(data)
@@ -93,36 +108,52 @@ class Dataset:
         literal_title = " ".join(str(word) for word in title)
         return literal_title
     
-    # Clean up the data, use regex https://medium.com/biaslyai/beginners-guide-to-text-preprocessing-in-python-2cbeafbf5f44
-    #def preprocess(self):
-    
+    def preprocess(self, data):
+        """
+        Call a series of functions to preprocess data.
+        """
 
-    # REWORK THIS V
+        preprocessed_data = self.remove_stopwords(data)
+
+        return preprocessed_data
+
+    def remove_stopwords(self, data):
+        """
+        Remove stopwords.
+
+        Thankfully these are tagged and easy to find.
+        """
+
+        for token in data:
+            if token[2] == "PUNCT": data.remove(token)
+            if token[0] in string.punctuation and token[2] != "PUNCT": data.remove(token)
+        return data
+    
+    # make this a bit for loop to do what test_svo does, 
+    # make a new list like string[] or something and store the entries there
+    #def convert_to_string(self)
+
     def total_subject_verb_object(self):
         """
+        Trying to re-write the svo extraction/mention the lib u use
         """
-        SUBJECTS = ["nsubj", "nsubjpass", "csubj", "csubjpass", "agent", "expl"]
-        OBJECTS = ["dobj", "dative", "attr", "oprd"]
-
         total_svo_count = 0
-
+        nlp = en_core_web_sm.load()
         for index, row in self.corpus.iterrows():
             indexed_title = self.corpus.parsed_title.iloc[index]
-            indexed_title = self.convert_from_string_to_objects(indexed_title)
-            
-            subjects = []
-            objects = []
-            verbs = []
 
+            words = []
+            title = []
             for token in indexed_title:
-                if token[3] in SUBJECTS:
-                    subjects.append(token)
-                if token[3] in OBJECTS:
-                    objects.append(token)
-                if token[2] == "VERB":
-                    verbs.append(token)
-            
-            if len(subjects) > 0 and len(objects) > 0 and len(verbs) > 0:
+                words.append(token[0])
+            for word in words:
+                title = " ".join(str(word) for word in words)
+
+            if type(title) is str:
+                parse = nlp(title)
+            elif type(title) is list:
+                None # Just... do nothing...
+            if findSVOs(parse):
                 total_svo_count += 1
         return total_svo_count
 
@@ -244,8 +275,10 @@ print("Before stripping it down, the title was: {}".format(random_title))
 
 if __name__ == "__main__":
     Articles = Dataset()
-    tokenized_random_title = Articles.get_tokenized_random_title()
-    literal_random_title = Articles.get_literal_random_title()
+    #tokenized_random_title = Articles.get_tokenized_random_title()
+    #literal_random_title = Articles.get_literal_random_title()
     total_subject_verb_object = Articles.total_subject_verb_object()
     average_svo_score = round(Articles.total_subject_verb_object()/Articles.get_title_count(), 2)
-    Articles.draw_syntactic_parse_tree()
+    #Articles.draw_syntactic_parse_tree()
+    print("Average: ", average_svo_score)
+
