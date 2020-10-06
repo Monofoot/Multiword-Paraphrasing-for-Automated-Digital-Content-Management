@@ -48,16 +48,15 @@ class Dataset:
         so that we can remove the entire object we don't want.
         """
         self.corpus = pd.read_csv('mscarticles.csv')
-        print("Selecting a random title.")
         self.random_title = self.corpus.parsed_title.iloc[rand.randrange(0, 9999)]
         
-        print("Converting the random title from string to object.")
         self.random_title = self.convert_from_string_to_objects(self.random_title)
-        print("Preprocessing the title.")
         self.random_title = self.preprocess(self.random_title)
 
-        print("Doing the rest of it now")
         for index, row in self.corpus.iterrows():
+            if self.is_less_than_two_words(self.corpus.parsed_title.iloc[index]) == True:
+                print("yes, remove")
+                self.corpus.drop(self.corpus.index[index], inplace=True) # just remove this..
             self.corpus.parsed_title.iloc[index] = self.convert_from_string_to_objects(self.corpus.parsed_title.iloc[index])
             self.corpus.parsed_title.iloc[index] = self.preprocess(self.corpus.parsed_title.iloc[index])
 
@@ -104,7 +103,7 @@ class Dataset:
         title = []
         for token in self.random_title:
             title.append(token[0])
-        literal_title = " ".join(str(word) for word in title)
+        literal_title = self.convert_to_string(title)
         return literal_title
     
     def preprocess(self, data):
@@ -127,51 +126,64 @@ class Dataset:
             if token[2] == "PUNCT": data.remove(token)
             if token[0] in string.punctuation and token[2] != "PUNCT": data.remove(token)
         return data
+
+    def is_less_than_two_words(self, data):
+        """
+        Remove entries which are less than two in length.
+        """
+
+        if len(data) <= 2: return True
+        else: return False
     
-    # make this a bit for loop to do what test_svo does, 
-    # make a new list like string[] or something and store the entries there
-    #def convert_to_string(self)
+    def convert_to_string(self, tokens):
+        """
+        Convert from a list to a readable string.
+        """
+        #print("Testing list: ", tokens, "size: ", len(tokens))
+        #print("Testing list: ", tokens, "size: ", len(tokens))
+        for token in tokens: converted = " ".join(str(token) for token in tokens)
+        #print("Converted tokens to: ", converted)
+        return converted
+
 
     def extract_subject_verb_object(self):
         """
         Extract subject verb object relationships.
+
+        This takes a very long time, and it most likely
+        due to the fact that we run each word through a parser.
+        In the future this could be redone, but this is the best
+        method for finding SVO relationships I've found as of yet.
         """
         
         nlp = en_core_web_sm.load()
+        patterns = []
         for index, row in self.corpus.iterrows():
             indexed_title = self.corpus.parsed_title.iloc[index]
 
             words = []
             title = []
-            for token in indexed_title:
-                words.append(token[0])
-            for word in words:
-                title = " ".join(str(word) for word in words)
+            if len(indexed_title) < 2: print("FOUND CULRPTI: ", indexed_title)
+            for token in indexed_title: words.append(token[0])
+            title = self.convert_to_string(words)
 
-            if type(title) is str:
-                parse = nlp(title)
-            elif type(title) is list:
-                None # Just... do nothing...
-            if findSVOs(parse):
-                total_svo_count += 1
-        return total_svo_count
+            if type(title) is str: parse = nlp(title)
+            elif type(title) is list: None # Just... do nothing...
+            svo = findSVOs(parse)
+            if svo: patterns.append(svo)
+        return patterns
 
     def total_subject_verb_object(self, list_of_svo):
         """
         Return the total number of subject verb object relationships.
         """
-        total_svo_count = 0
-                    if type(title) is str:
-                parse = nlp(title)
-            elif type(title) is list:
-                None # Just... do nothing...
-            if findSVOs(parse):
-                total_svo_count += 1
+        return len(list_of_svo)
 
     def most_frequent_subject_verb_object(self):
         """
         Find the most frequent subject verb object relationships.
         """
+        None
 
     def draw_syntactic_parse_tree(self):
         """
@@ -293,7 +305,8 @@ if __name__ == "__main__":
     Articles = Dataset()
     #tokenized_random_title = Articles.get_tokenized_random_title()
     #literal_random_title = Articles.get_literal_random_title()
-    #total_subject_verb_object = Articles.total_subject_verb_object()
+    list_of_svo = Articles.extract_subject_verb_object()
+    total_subject_verb_object = Articles.total_subject_verb_object(list_of_svo)
     #average_svo_score = round(Articles.total_subject_verb_object()/Articles.get_title_count(), 2)
     #Articles.draw_syntactic_parse_tree()
     #print("Average: ", average_svo_score)
