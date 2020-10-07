@@ -54,11 +54,10 @@ class Dataset:
         self.random_title = self.preprocess(self.random_title)
 
         for index, row in self.corpus.iterrows():
-            if self.is_less_than_two_words(self.corpus.parsed_title.iloc[index]) == True:
-                print("yes, remove")
-                self.corpus.drop(self.corpus.index[index], inplace=True) # just remove this..
-            self.corpus.parsed_title.iloc[index] = self.convert_from_string_to_objects(self.corpus.parsed_title.iloc[index])
-            self.corpus.parsed_title.iloc[index] = self.preprocess(self.corpus.parsed_title.iloc[index])
+            self.corpus.loc[index, 'parsed_title'] = self.convert_from_string_to_objects(self.corpus.loc[index, 'parsed_title'])
+            self.corpus.loc[index, 'parsed_title'] = self.preprocess(self.corpus.loc[index, 'parsed_title'])
+            if self.is_less_than_two_words(self.corpus.loc[index, 'parsed_title']) == True:
+                self.corpus.drop(index, inplace=True)
 
     def get_dataset(self):
         """
@@ -139,8 +138,6 @@ class Dataset:
         """
         Convert from a list to a readable string.
         """
-        #print("Testing list: ", tokens, "size: ", len(tokens))
-        #print("Testing list: ", tokens, "size: ", len(tokens))
         for token in tokens: converted = " ".join(str(token) for token in tokens)
         #print("Converted tokens to: ", converted)
         return converted
@@ -159,11 +156,10 @@ class Dataset:
         nlp = en_core_web_sm.load()
         patterns = []
         for index, row in self.corpus.iterrows():
-            indexed_title = self.corpus.parsed_title.iloc[index]
+            indexed_title = self.corpus.loc[index, 'parsed_title']
 
             words = []
             title = []
-            if len(indexed_title) < 2: print("FOUND CULRPTI: ", indexed_title)
             for token in indexed_title: words.append(token[0])
             title = self.convert_to_string(words)
 
@@ -179,11 +175,15 @@ class Dataset:
         """
         return len(list_of_svo)
 
-    def most_frequent_subject_verb_object(self):
+    def most_frequent_subject_verb_object(self, list_of_svo):
         """
         Find the most frequent subject verb object relationships.
         """
-        None
+        for svo in list_of_svo:
+            if svo in found: print("found a duplicate of ", svo)
+            found.append(svo)
+        print("whole list: ", found) # figure this out
+        return most_frequent_svo
 
     def draw_syntactic_parse_tree(self):
         """
@@ -239,34 +239,6 @@ print("Nodes: ", graph_title.nodes)
 #    print("Printing the nodes as they are the same length: ", nsubj_nodes, dobj_nodes)
 #    print("The shortest path between each nsubj and dobj: ", nx.shortest_path(graph_title, nsubj_nodes[0], dobj_nodes[0])) # Work from here, can't find a path
 
-
-################
-# SVO
-################
-# Checking for SVO, SVVO or SVOO.
-
-        list_of_subjects = []
-        list_of_objects = []
-        list_of_verbs = []
-
-'''for token in random_title:
-    if token[3] in SUBJECTS:
-        list_of_subjects.append(token)
-    if token[3] in OBJECTS:
-        list_of_objects.append(token)
-    if token[2] == "VERB":
-        list_of_verbs.append(token)
-'''
-
-
-
-"""
-"""try:
-    print("SVO found: ", list_of_subjects[0], list_of_verbs[0], list_of_objects[0])
-except:
-    print("No SVO pattern found.")
-"""
-"""
 # Find node whose label is a subject and then find nx.shortest_path
 # So you're simply finding the shortest path from the parent to the child
 # "A court has lifted the restriction on Mary Trump's tell-all book" becomes:
@@ -303,11 +275,15 @@ print("Before stripping it down, the title was: {}".format(random_title))
 
 if __name__ == "__main__":
     Articles = Dataset()
-    #tokenized_random_title = Articles.get_tokenized_random_title()
-    #literal_random_title = Articles.get_literal_random_title()
+    tokenized_random_title = Articles.get_tokenized_random_title()
+    literal_random_title = Articles.get_literal_random_title()
+    
     list_of_svo = Articles.extract_subject_verb_object()
     total_subject_verb_object = Articles.total_subject_verb_object(list_of_svo)
-    #average_svo_score = round(Articles.total_subject_verb_object()/Articles.get_title_count(), 2)
-    #Articles.draw_syntactic_parse_tree()
+    #average_svo_score = round(total_subject_verb_object/Articles.get_title_count(), 2)
     #print("Average: ", average_svo_score)
+    most_frequent_svo = Articles.most_frequent_subject_verb_object(list_of_svo)
+
+    #Articles.draw_syntactic_parse_tree()
+
 
