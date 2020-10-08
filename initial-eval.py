@@ -1,12 +1,14 @@
 #!/usr/bin/python
 
+import collections
+import os
 import random as rand
 import string
 from ast import literal_eval
-import os
 
 import en_core_web_sm
 import matplotlib as mpl
+
 if os.environ.get('DISPLAY','') == '':
     print('No display for matplotlib found.')
 import matplotlib.pyplot as plt
@@ -14,8 +16,9 @@ import networkx as nx
 import nltk
 import pandas as pd
 import spacy
-from spacy.lang.en import English
 from nltk.tag import map_tag, pos_tag
+from spacy.lang.en import English
+
 from subject_object_extraction import findSVOs
 
 '''
@@ -48,11 +51,12 @@ class Dataset:
         so that we can remove the entire object we don't want.
         """
         self.corpus = pd.read_csv('mscarticles.csv')
-        self.random_title = self.corpus.parsed_title.iloc[rand.randrange(0, 9999)]
-        
-        self.random_title = self.convert_from_string_to_objects(self.random_title)
-        self.random_title = self.preprocess(self.random_title)
 
+        self.random_title = self.corpus.parsed_title.iloc[rand.randrange(0, 9999)]
+        self.random_title = self.convert_from_string_to_objects(self.random_title)
+
+        self.random_title = self.preprocess(self.random_title)
+        self.corpus.drop_duplicates(subset="title", keep="first", inplace=True)
         for index, row in self.corpus.iterrows():
             self.corpus.loc[index, 'parsed_title'] = self.convert_from_string_to_objects(self.corpus.loc[index, 'parsed_title'])
             self.corpus.loc[index, 'parsed_title'] = self.preprocess(self.corpus.loc[index, 'parsed_title'])
@@ -139,7 +143,6 @@ class Dataset:
         Convert from a list to a readable string.
         """
         for token in tokens: converted = " ".join(str(token) for token in tokens)
-        #print("Converted tokens to: ", converted)
         return converted
 
 
@@ -178,12 +181,13 @@ class Dataset:
     def most_frequent_subject_verb_object(self, list_of_svo):
         """
         Find the most frequent subject verb object relationships.
+
+        Note: using collections is this scenario requires the list to be
+        mapped to a tuple.
         """
-        for svo in list_of_svo:
-            if svo in found: print("found a duplicate of ", svo)
-            found.append(svo)
-        print("whole list: ", found) # figure this out
-        return most_frequent_svo
+        counter = collections.Counter(map(tuple, list_of_svo))
+
+        return counter.most_common(3)
 
     def draw_syntactic_parse_tree(self):
         """
@@ -283,6 +287,7 @@ if __name__ == "__main__":
     #average_svo_score = round(total_subject_verb_object/Articles.get_title_count(), 2)
     #print("Average: ", average_svo_score)
     most_frequent_svo = Articles.most_frequent_subject_verb_object(list_of_svo)
+    print(most_frequent_svo)
 
     #Articles.draw_syntactic_parse_tree()
 
