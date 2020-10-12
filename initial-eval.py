@@ -5,6 +5,7 @@ import os
 import random as rand
 import string
 from ast import literal_eval
+from pathlib import Path
 
 import en_core_web_sm
 import matplotlib as mpl
@@ -13,11 +14,14 @@ if os.environ.get('DISPLAY','') == '':
     print('No display for matplotlib found.')
 import matplotlib.pyplot as plt
 import networkx as nx
+from networkx.drawing.nx_agraph import graphviz_layout
 import nltk
 import pandas as pd
 import spacy
+from spacy import displacy
 from nltk.tag import map_tag, pos_tag
 from spacy.lang.en import English
+import visualise_spacy_tree
 
 from subject_object_extraction import findSVOs
 
@@ -54,6 +58,9 @@ class Dataset:
 
         self.random_title = self.corpus.parsed_title.iloc[rand.randrange(0, 9999)]
         self.random_title = self.convert_from_string_to_objects(self.random_title)
+        
+        # Do it without preprocessing (no errors)
+        self.draw_syntactic_parse_tree(self.random_title) 
 
         self.random_title = self.preprocess(self.random_title)
         self.corpus.drop_duplicates(subset="title", keep="first", inplace=True)
@@ -189,21 +196,70 @@ class Dataset:
 
         return counter.most_common(3)
 
-    def draw_syntactic_parse_tree(self):
+    def draw_syntactic_parse_tree(self, data):
         """
-        One line doc string.
+        Draw a syntactic parse tree, save as png file in cwd or show.
         """
-
-        entities = []
-        for token in self.random_title:
-            entities.append((token[0], token[2]))
-        draw_entities = nltk.chunk.ne_chunk(entities)
-        # Need to sort the tokens so that it looks like this:
-        #[('word', 'NOUN'), ('nextword', 'PRON')]
-
-        # To draw the tree:
-        draw_entities.draw()
+        G = nx.DiGraph()
+        labels = {}
+        print(self.get_literal_random_title())
+        for index, token in enumerate(data):
+            G.add_node(token[4])
+            G.add_edge(token[4], token[1])
+            print(token[0])
+            print("data: ", len(data))
+            print("index: ", index)
+            labels[index]=token[0] + " " + token[2] + " " + token[3]
         
+        pos = graphviz_layout(G, prog='dot')
+        nx.draw(G, pos=pos, with_labels=False, font_weight='bold')
+        nx.draw_networkx_labels(G, pos, labels)
+        #plt.savefig("syntactic_parse_tree.png") #STILL FIND SHORTED PATH, IT'S DOABLE NOW!!!
+        plt.show()
+
+        
+    def draw_dependency_graph(self):
+        """
+        Draw a dependency graph, save as svg file in cwd.
+        """
+        nlp = en_core_web_sm.load()
+        doc = nlp(self.get_literal_random_title())
+        
+        dependency_graph = displacy.render(doc, style="dep", jupyter=False)
+
+        file_name = "dependency_graph.svg"
+        output_path = Path.cwd() / file_name
+        output_path.open("w", encoding="utf-8").write(dependency_graph)
+    
+    def draw_entity_recogniser(self):
+        """
+        Draw an entity recogniser, save as svg file in cwd.
+        """
+        nlp = en_core_web_sm.load()
+        doc = nlp(self.get_literal_random_title())
+        
+        entity_recogniser = displacy.render(doc, style="ent", page=True)
+
+        file_name = "entity_recogniser.html"
+        output_path = Path.cwd() / file_name
+        output_path.open("w", encoding="utf-8").write(entity_recogniser)
+
+
+    def define_chunks(self, data):
+        """
+        Define the chunks of the grammar.
+
+        The data we have is already tokenized and has
+        relevant POS and types of speech. However,
+        another interesting element is chunking, which
+        stores words together with adjacent tokens.
+        """
+        None
+    
+    def get_word_frequency(self, data):
+        """
+        Return the word frequency.
+        """
 
 """
 # Check frequent patterns between subject and direct object.
@@ -261,20 +317,6 @@ edges = nx.draw_networkx_edges(graph_title, pos)
 
 ##############################
 
-print("\n")
-
-import spacy
-from spacy import displacy
-nlp = spacy.load('en_core_web_sm')
-
-# Use the random title which has been converted to it's raw string sentence.
-doc = nlp(eligible_title)
-displacy.render(doc, style="dep", jupyter=True)
-
-
-
-print("Before stripping it down, the title was: {}".format(random_title))
-
 """
 
 if __name__ == "__main__":
@@ -282,13 +324,16 @@ if __name__ == "__main__":
     tokenized_random_title = Articles.get_tokenized_random_title()
     literal_random_title = Articles.get_literal_random_title()
     
-    list_of_svo = Articles.extract_subject_verb_object()
-    total_subject_verb_object = Articles.total_subject_verb_object(list_of_svo)
+    #list_of_svo = Articles.extract_subject_verb_object()
+    #total_subject_verb_object = Articles.total_subject_verb_object(list_of_svo)
     #average_svo_score = round(total_subject_verb_object/Articles.get_title_count(), 2)
     #print("Average: ", average_svo_score)
-    most_frequent_svo = Articles.most_frequent_subject_verb_object(list_of_svo)
-    print(most_frequent_svo)
+    #most_frequent_svo = Articles.most_frequent_subject_verb_object(list_of_svo)
+    #print(most_frequent_svo)
 
-    #Articles.draw_syntactic_parse_tree()
+    # Do it after preprocessing (potential for errors) 
+    #Articles.draw_syntactic_parse_tree(tokenized_random_title)
+    #Articles.draw_dependency_graph()
+    #Articles.draw_entity_recogniser()
 
 
