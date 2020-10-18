@@ -14,14 +14,14 @@ if os.environ.get('DISPLAY','') == '':
     print('No display for matplotlib found.')
 import matplotlib.pyplot as plt
 import networkx as nx
-from networkx.drawing.nx_agraph import graphviz_layout
 import nltk
 import pandas as pd
 import spacy
-from spacy import displacy
-from nltk.tag import map_tag, pos_tag
-from spacy.lang.en import English
 import visualise_spacy_tree
+from networkx.drawing.nx_agraph import graphviz_layout
+from nltk.tag import map_tag, pos_tag
+from spacy import displacy
+from spacy.lang.en import English
 
 from subject_object_extraction import findSVOs
 
@@ -55,14 +55,16 @@ class Dataset:
         so that we can remove the entire object we don't want.
         """
         self.corpus = pd.read_csv('mscarticles.csv')
+        self.list_of_svo_titles = []
 
         self.random_title = self.corpus.parsed_title.iloc[rand.randrange(0, 9999)]
         self.random_title = self.convert_from_string_to_objects(self.random_title)
-        
-        # Do it without preprocessing (no errors)
-        self.draw_syntactic_parse_tree(self.random_title) 
-
+        # Draw it without preprocessing (no errors)
+        # self.draw_syntactic_parse_tree(self.random_title) 
         self.random_title = self.preprocess(self.random_title)
+        self.G = self.create_digraph(self.random_title)
+    
+
         self.corpus.drop_duplicates(subset="title", keep="first", inplace=True)
         for index, row in self.corpus.iterrows():
             self.corpus.loc[index, 'parsed_title'] = self.convert_from_string_to_objects(self.corpus.loc[index, 'parsed_title'])
@@ -83,6 +85,16 @@ class Dataset:
         """
 
         return len(self.corpus)
+    
+    def get_list_of_svos(self):
+        """
+        Return the qualified SVO titles.
+
+        Make sure extract_svo has been run, 
+        otherwise list is empty.
+        """
+        if len(self.list_of_svo_titles) == 0: self.extract_subject_verb_object()
+        return self.list_of_svo_titles
 
     def convert_from_string_to_objects(self, data):
         """
@@ -95,9 +107,7 @@ class Dataset:
         """
         
         return literal_eval(data)
-        
-        
-    
+
     def get_tokenized_random_title(self):
         """
         Return the random title in token form.
@@ -176,7 +186,9 @@ class Dataset:
             if type(title) is str: parse = nlp(title)
             elif type(title) is list: None # Just... do nothing...
             svo = findSVOs(parse)
-            if svo: patterns.append(svo)
+            if svo:
+                patterns.append(svo)
+                self.list_of_svo_titles.append(indexed_title)
         return patterns
 
     def total_subject_verb_object(self, list_of_svo):
@@ -189,34 +201,48 @@ class Dataset:
         """
         Find the most frequent subject verb object relationships.
 
-        Note: using collections is this scenario requires the list to be
+        Note: using collections in this scenario requires the list to be
         mapped to a tuple.
         """
         counter = collections.Counter(map(tuple, list_of_svo))
 
         return counter.most_common(3)
+    
+    def create_digraph(self, data):
+        """
+        """
+        G = nx.DiGraph()
+        labels = {}
+        for index, token in enumerate(data):
+            G.add_node(token[4])
+            G.add_edge(token[4], token[1])
+            labels[index]=token[0] + " " + token[2] + " " + token[3]
+        return G, labels
 
     def draw_syntactic_parse_tree(self, data):
         """
         Draw a syntactic parse tree, save as png file in cwd or show.
+
+        to-do: possible eliminate graphs
+        with split connections (mostly involving punctuation)
         """
-        G = nx.DiGraph()
-        labels = {}
-        print(self.get_literal_random_title())
-        for index, token in enumerate(data):
-            G.add_node(token[4])
-            G.add_edge(token[4], token[1])
-            print(token[0])
-            print("data: ", len(data))
-            print("index: ", index)
-            labels[index]=token[0] + " " + token[2] + " " + token[3]
-        
+        G, labels = self.create_digraph(data)
         pos = graphviz_layout(G, prog='dot')
         nx.draw(G, pos=pos, with_labels=False, font_weight='bold')
         nx.draw_networkx_labels(G, pos, labels)
-        #plt.savefig("syntactic_parse_tree.png") #STILL FIND SHORTED PATH, IT'S DOABLE NOW!!!
+        #plt.savefig("syntactic_parse_tree.png")
         plt.show()
 
+    def find_shortest_path_between_subject_and_object(self, data):
+        """
+        """
+        for title in data:
+            tokenized_title = literal_eval(str(title))
+            for token in tokenized_title:
+                print(token[0], token[1], token[2])
+        # continue here
+        # If title has an SVO, find shortest path between S and O
+        #return nx.shortest_path_length(self.G, this one, to this one))
         
     def draw_dependency_graph(self):
         """
@@ -260,35 +286,9 @@ class Dataset:
         """
         Return the word frequency.
         """
+        None
 
 """
-# Check frequent patterns between subject and direct object.
-raw_edges = []
-
-for token in random_title:
-    raw_edges.append((token[4], token[1])) # Store relationships between edges.
-
-graph_title = nx.DiGraph(raw_edges)
-
-nsubj_nodes = []
-dobj_nodes = []
-
-# This might be really inefficient but it's 1am and I'm falling asleep
-labels = {}
-for node in graph_title.nodes:
-    for token in random_title:
-        if token[1] == node:
-            labels[node] =  str(node) + " " + token[3] + " " + token[0]
-            # Also check for nsubj and dobj here.
-            if token[3] == "nsubj":
-                nsubj_nodes.append(node)
-            if token[3] == "dobj":
-                dobj_nodes.append(node)
-
-print("Edges: ", graph_title.edges)
-print("Nodes: ", graph_title.nodes)
-
-
 ############
 # subject object shortest paths
 ############
@@ -320,20 +320,33 @@ edges = nx.draw_networkx_edges(graph_title, pos)
 """
 
 if __name__ == "__main__":
-    Articles = Dataset()
-    tokenized_random_title = Articles.get_tokenized_random_title()
-    literal_random_title = Articles.get_literal_random_title()
+    #Articles = Dataset()
+    #tokenized_random_title = Articles.get_tokenized_random_title()
+    #literal_random_title = Articles.get_literal_random_title()
     
     #list_of_svo = Articles.extract_subject_verb_object()
     #total_subject_verb_object = Articles.total_subject_verb_object(list_of_svo)
     #average_svo_score = round(total_subject_verb_object/Articles.get_title_count(), 2)
     #print("Average: ", average_svo_score)
+    #list_of_svos = Articles.get_list_of_svos()
     #most_frequent_svo = Articles.most_frequent_subject_verb_object(list_of_svo)
     #print(most_frequent_svo)
 
     # Do it after preprocessing (potential for errors) 
     #Articles.draw_syntactic_parse_tree(tokenized_random_title)
+
     #Articles.draw_dependency_graph()
     #Articles.draw_entity_recogniser()
+    #Articles.find_shortest_path_between_subject_and_object(list_of_svos)
+    print("Main")
 
 
+"""
+have code to analyse the syntactic trees
+use this marketmate data as data augmentation
+measure how different the augmented sentence is to the originalm, compare the trees
+how to compare graphs - two graphs, what algorithms exist to compare them
+to-do: reading on the above algorithms
+a machien learning framework
+read the papers
+"""
