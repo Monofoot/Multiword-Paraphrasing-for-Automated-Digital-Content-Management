@@ -60,9 +60,8 @@ class Dataset:
         self.random_title = self.corpus.parsed_title.iloc[rand.randrange(0, 9999)]
         self.random_title = self.convert_from_string_to_objects(self.random_title)
         # Draw it without preprocessing (no errors)
-        # self.draw_syntactic_parse_tree(self.random_title) 
+        self.create_digraph(self.random_title) 
         self.random_title = self.preprocess(self.random_title)
-        self.G = self.create_digraph(self.random_title)
     
 
         self.corpus.drop_duplicates(subset="title", keep="first", inplace=True)
@@ -213,11 +212,60 @@ class Dataset:
         """
         G = nx.DiGraph()
         labels = {}
+        plt.figure(figsize=(10, 10))
         for index, token in enumerate(data):
             G.add_node(token[4])
             G.add_edge(token[4], token[1])
-            labels[index]=token[0] + " " + token[2] + " " + token[3]
-        return G, labels
+            labels[index]=token[0] + " " + token[3]
+
+        pos = graphviz_layout(G, prog='dot')
+        nx.draw(G, pos=pos, with_labels=False, font_weight='bold')
+        nx.draw_networkx_labels(G, pos, labels)
+        plt.savefig("syntactic_parse_tree_en.png")
+        plt.clf()
+        #plt.show()
+    
+    def create_digraph_from_untagged_data_backtranslate(self, data):
+        """
+        Same as create_digraph, but with untagged data.
+        """
+        nlp = spacy.load("en_core_web_sm")
+        parse = nlp(data)
+        G_BACKTRANSLATED = nx.DiGraph()
+        labels = {}
+        
+        for index, word in enumerate(parse):
+            G_BACKTRANSLATED.add_node(word.i)
+            G_BACKTRANSLATED.add_edge(word.head.i, word.i)
+            labels[index]=str(word.text) + " " + str(word.dep_)
+        plt.figure(figsize=(10, 10))
+        pos_backtranslated = graphviz_layout(G_BACKTRANSLATED, prog='dot')
+        nx.draw(G_BACKTRANSLATED, pos=pos_backtranslated, with_labels=False, font_weight='bold')
+        nx.draw_networkx_labels(G_BACKTRANSLATED, pos_backtranslated, labels)
+        plt.savefig("syntactic_parse_tree_backtranslated.png")
+        plt.clf()
+        #plt.show()
+
+    def create_digraph_from_untagged_data_french(self, data):
+        """
+        Same as create_digraph, but with untagged data.
+        """
+        nlp = spacy.load('fr_core_news_sm')
+        parse = nlp(data)
+        G_FRENCH = nx.DiGraph()
+        labels = {}
+        plt.figure(figsize=(10, 10))
+        for index, word in enumerate(parse):
+            G_FRENCH.add_node(word.i)
+            G_FRENCH.add_edge(word.head.i, word.i)
+            labels[index]=str(word.text) + " " + str(word.dep_)
+        
+        pos_french = graphviz_layout(G_FRENCH, prog='dot')
+        nx.draw(G_FRENCH, pos=pos_french, with_labels=False, font_weight='bold')
+        nx.draw_networkx_labels(G_FRENCH, pos_french, labels)
+        plt.savefig("syntactic_parse_tree_fr.png")
+        plt.clf()
+        #plt.show()
 
     def draw_syntactic_parse_tree(self, data):
         """
@@ -226,12 +274,8 @@ class Dataset:
         to-do: possible eliminate graphs
         with split connections (mostly involving punctuation)
         """
-        G, labels = self.create_digraph(data)
-        pos = graphviz_layout(G, prog='dot')
-        nx.draw(G, pos=pos, with_labels=False, font_weight='bold')
-        nx.draw_networkx_labels(G, pos, labels)
-        #plt.savefig("syntactic_parse_tree.png")
-        plt.show()
+        None
+
 
     def find_shortest_path_between_subject_and_object(self, data):
         """
@@ -288,37 +332,6 @@ class Dataset:
         """
         None
 
-"""
-############
-# subject object shortest paths
-############
-#print("The nsubj node(s): ", nsubj_nodes)
-#print("The dobj node(s): ", dobj_nodes)
-#nx.all_pairs_shortest_path_length(graph_title)
-#if len(nsubj_nodes) == len(dobj_nodes) and len(nsubj_nodes) > 0:
-#    print("Printing the nodes as they are the same length: ", nsubj_nodes, dobj_nodes)
-#    print("The shortest path between each nsubj and dobj: ", nx.shortest_path(graph_title, nsubj_nodes[0], dobj_nodes[0])) # Work from here, can't find a path
-
-# Find node whose label is a subject and then find nx.shortest_path
-# So you're simply finding the shortest path from the parent to the child
-# "A court has lifted the restriction on Mary Trump's tell-all book" becomes:
-# "A court lifted the restriction on Mary Trump's tell-all book"
-
-# So if you get a pattern of like (0, 1) (1, 0) etc, then see how many times you get that pattern
-# use nx, don't do it all by hand, research nx - shortest path
-
-pos = nx.planar_layout(graph_title)
-
-nx.draw_networkx_labels(graph_title, pos, labels)
-nodes = nx.draw_networkx_nodes(graph_title, pos)
-edges = nx.draw_networkx_edges(graph_title, pos)
-
-#plt.show()
-
-##############################
-
-"""
-
 if __name__ == "__main__":
     #Articles = Dataset()
     #tokenized_random_title = Articles.get_tokenized_random_title()
@@ -349,4 +362,6 @@ how to compare graphs - two graphs, what algorithms exist to compare them
 to-do: reading on the above algorithms
 a machien learning framework
 read the papers
+
+if it has punctuation, remove the title entirely? probably a bad idea...
 """
