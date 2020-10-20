@@ -1,6 +1,6 @@
 #!/usr/bin/python
 
-import articles
+import titles
 import googletrans
 from googletrans import Translator
 
@@ -30,10 +30,10 @@ class Translate:
         return self.french_to_english
 
 if __name__ == "__main__":
-    Article = articles.Dataset()
-    title = Article.get_literal_random_title()
-    translated_title = Translate(title)
-    title_test = translated_title.get_translation()
-    french_to_english = translated_title.get_backtranslation()
-    Article.create_digraph_from_untagged_data_french(title_test)
-    Article.create_digraph_from_untagged_data_backtranslate(french_to_english)
+    corpus = titles.Titles()
+    title = corpus.get_literal_random_title()
+    Translated = Translate(title)
+    title_test = Translated.get_translation()
+    french_to_english = Translated.get_backtranslation()
+    corpus.create_digraph_from_untagged_translated_data(title_test, "de")
+    corpus.create_digraph_from_untagged_data_backtranslate(french_to_english)
